@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gohan clicker game</title>
+    <link rel="stylesheet" href="theme.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+    <button id="cookieButton" class="ki-btn">
+        <span class="ki-symbol">気</span>
+        <span class="ki-label">KI</span>
+    </button>
+    <div id="points"><strong>Point(S):</strong><span id="point">0</span></div>
+
+    <h2 id="cookieAmount">You have 0 ki!</h2>
+    <p id="info">Become the strongest!</p>
+
+    <main class="container">
+        <img src="" alt="">
+        <div class="shop">
+            <h2>shop:</h2>
+            <p id="amount">Even stronger now</p>
+            <button type="button" id="upgradeClicker">Upgrade clicker for 50 ki</button>
+            <li><button type="button" id="autoClicker">Purchase auto clicker for 100 Ki</button> </li>
+            <ol>
+                <li><strong>DOUBLE (2X)</strong> Ki!</li>
+                <button class="buy" id="double">Ki: 12</button>
+                <br><br>
+                <li><strong>TRIPLE (3X)</strong> Ki!</li>
+                <button class="buy" id="triple">Ki: 24</button>
+                <br><br>
+                <li><strong>EIGHT (8X)</strong> Ki!</li>
+                <button class="buy" id="eight">Ki: 64</button>
+            </ol>
+        </div>
+    </main>
+
+    <button id="KamehamehaUpgrade">Kamehameha for 150 Ki</button>
+
+</body>
+</html>
