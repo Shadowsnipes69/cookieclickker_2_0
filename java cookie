@@ -1,0 +1,76 @@
+const cookieButton = document.getElementById("cookieButton");
+const cookieAmount = document.getElementById("cookieAmount");
+const upgradeClickerButton = document.getElementById("upgradeClicker");
+const autoClickerButton = document.getElementById("autoClicker");
+const kamehamehaUpgradeButton = document.getElementById("KamehamehaUpgrade");
+
+let ki = 0;
+let multiplier = 1;
+let multiplierCost = 50;
+
+let autoClickers = 0;
+let autoClickerCost = 100;
+
+let kamehamehaPower = 0;
+let kamehamehaCost = 150;
+
+let autoClickerInterval = null;
+
+function updateCookieAmount() {
+    cookieAmount.textContent = "You have " + ki + " ki!";
+}
+
+function clickKi() {
+    ki += multiplier;
+    updateCookieAmount();
+}
+
+function buyMultiplier() {
+    if (ki >= multiplierCost) {
+        ki -= multiplierCost;
+        multiplierCost = Math.ceil(multiplierCost * 1.3);
+        multiplier += 1;
+        updateCookieAmount();
+        upgradeClickerButton.textContent = "Upgrade clicker for " + multiplierCost + " ki";
+    } else {
+        alert("Not enough Ki");
+    }
+}
+
+function buyAutoClicker() {
+    if (ki >= autoClickerCost) {
+        ki -= autoClickerCost;
+        autoClickers += 1;
+        autoClickerCost = Math.ceil(autoClickerCost * 1.25);
+        updateCookieAmount();
+        autoClickerButton.textContent = "Purchase auto clicker for " + autoClickerCost + " ki";
+
+        if (autoClickerInterval === null) {
+            autoClickerInterval = setInterval(() => {
+                ki += autoClickers;
+                updateCookieAmount();
+            }, 1000);
+        }
+    } else {
+        alert("Not enough Ki");
+    }
+}
+
+function buyKamehameha() {
+    if (ki >= kamehamehaCost) {
+        ki -= kamehamehaCost;
+        kamehamehaPower += 1;
+        kamehamehaCost = Math.ceil(kamehamehaCost * 1.5);
+        updateCookieAmount();
+        kamehamehaUpgradeButton.textContent = "Kamehameha for " + kamehamehaCost + " ki";
+    } else {
+        alert("Not enough Ki");
+    }
+}
+
+cookieButton.addEventListener("click", clickKi);
+upgradeClickerButton.addEventListener("click", buyMultiplier);
+autoClickerButton.addEventListener("click", buyAutoClicker);
+kamehamehaUpgradeButton.addEventListener("click", buyKamehameha);
+
+updateCookieAmount();
