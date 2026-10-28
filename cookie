@@ -9,6 +9,7 @@
 </head>
 <body>
 
+    <div id="kamehamehaStatus"></div>
     <button id="cookieButton" class="ki-btn">
         <span class="ki-symbol">気</span>
         <span class="ki-label">KI</span>
@@ -16,11 +17,14 @@
     <div id="points"><strong>Point(S):</strong><span id="point">0</span></div>
 
     <h2 id="cookieAmount">You have 0 ki!</h2>
-    <p id="info">Become the strongest!</p>
-
+    <p id="info">Become the strongest!</p>6
+    
     <main class="container">
-        <img src="" alt="">
-        <div class="shop">
+    <div class="gohan-stage">
+        <img id="gohan" src="sprites/base.gif" alt="Gohan" style="image-rendering: pixelated">
+    </div>
+    <div class="shop">
+        ...
             <h2>shop:</h2>
             <p id="amount">Even stronger now</p>
             <button type="button" id="upgradeClicker">Upgrade clicker for 50 ki</button>
