@@ -3,6 +3,7 @@ const cookieAmount = document.getElementById("cookieAmount");
 const upgradeClickerButton = document.getElementById("upgradeClicker");
 const autoClickerButton = document.getElementById("autoClicker");
 const kamehamehaUpgradeButton = document.getElementById("KamehamehaUpgrade");
+const kamehamehaStatusEl = document.getElementById("kamehamehaStatus");
 
 let ki = 0;
 let multiplier = 1;
@@ -13,11 +14,60 @@ let autoClickerCost = 100;
 
 let kamehamehaPower = 0;
 let kamehamehaCost = 150;
+let kamehamehaBoostLeft = 0;
+let kamehamehaCooldownLeft = 0;
+let kamehamehaTimer = null;
 
 let autoClickerInterval = null;
+let nextImageSrc = ''; // cache: only touch <img> when the target file actually changes
+
+
+const gohan = document.getElementById('gohan');
+
+document.querySelector('.ki-btn').addEventListener('click', () => {
+  points = points + 1;
+  document.querySelector('#points').textContent = points;
+
+  if (points >= 25000)   gohan.src = 'sprites/ssj1.gif';
+  if (points >= 30000)   gohan.src = 'sprites/ssj2.gif';
+  if (points >= 75000)  gohan.src = 'sprites/ultimate.gif';
+  if (points >= 150000) gohan.src = 'sprites/beast.gif';
+});
+
+
+const gohanStages = [
+  { threshold: 0,      src: 'sprites/base.gif', label: 'Base Gohan' },
+  { threshold: 25000,  src: 'sprites/ssj1.gif', label: 'Super Saiyan Gohan' },
+  { threshold: 30000,  src: 'sprites/ssj2.gif', label: 'Super Saiyan 2 Gohan' },
+  { threshold: 75000,  src: 'sprites/ultimate.gif', label: 'Adult Gohan' },
+  { threshold: 150000, src: 'sprites/beast.gif', label: 'Beast Gohan' },
+];
+
+function updateGohanImage(points) {
+  // pak de hoogste stage waar de punten aan voldoen
+  let current = gohanStages[0];
+  for (const stage of gohanStages) {
+    if (points >= stage.threshold) current = stage;
+  }
+
+  const img = document.getElementById('gohanImage');
+  if (!img || nextImageSrc === current.src) return;
+  nextImageSrc = current.src;
+  // PNGs and missing files don't animate on their own, so let CSS (gohan-breathe) do the motion.
+  img.src = current.src;
+  img.alt = current.label;
+}
+
+function updateShopButtons() {
+    upgradeClickerButton.disabled = ki < multiplierCost;
+    autoClickerButton.disabled = ki < autoClickerCost;
+    updateKamehamehaButton();
+}
 
 function updateCookieAmount() {
     cookieAmount.textContent = "You have " + ki + " ki!";
+    updateGohanImage(ki);
+    updateShopButtons();
 }
 
 function clickKi() {
@@ -57,14 +107,71 @@ function buyAutoClicker() {
 }
 
 function buyKamehameha() {
-    if (ki >= kamehamehaCost) {
-        ki -= kamehamehaCost;
-        kamehamehaPower += 1;
-        kamehamehaCost = Math.ceil(kamehamehaCost * 1.5);
-        updateCookieAmount();
+    if (kamehamehaPower === 0) {
+        if (ki >= kamehamehaCost) {
+            ki -= kamehamehaCost;
+            kamehamehaPower += 1;
+            kamehamehaCost = Math.ceil(kamehamehaCost * 1.5);
+            updateCookieAmount();
+        } else {
+            alert("Not enough Ki");
+        }
+        return;
+    }
+    if (kamehamehaBoostLeft > 0 || kamehamehaCooldownLeft > 0) {
+        return;
+    }
+    kamehamehaBoostLeft = 10;
+    kamehamehaTimer = setInterval(kamehamehaTick, 1000);
+    updateCookieAmount();
+}
+
+function kamehamehaTick() {
+    if (kamehamehaBoostLeft > 0) {
+        kamehamehaBoostLeft--;
+        ki += (multiplier + 50) * kamehamehaPower;
+        if (kamehamehaBoostLeft === 0) {
+            kamehamehaCooldownLeft = 60;
+        }
+    } else if (kamehamehaCooldownLeft > 0) {
+        kamehamehaCooldownLeft--;
+    }
+
+    updateCookieAmount();
+    updateKamehamehaStatus();
+
+    if (kamehamehaCooldownLeft === 0) {
+        clearInterval(kamehamehaTimer);
+        kamehamehaTimer = null;
+    }
+}
+
+function updateKamehamehaStatus() {
+    if (kamehamehaBoostLeft > 0) {
+        kamehamehaStatusEl.textContent = "Kamehameha boost active for " + kamehamehaBoostLeft + " seconds!";
+    } else if (kamehamehaCooldownLeft > 0) {
+        kamehamehaStatusEl.textContent = "Kamehameha on cooldown: " + kamehamehaCooldownLeft + "s";
+    } else {
+        kamehamehaStatusEl.textContent = "";
+    }
+}
+
+function updateKamehamehaButton() {
+    if (kamehamehaBoostLeft > 0) {
+        kamehamehaUpgradeButton.disabled = true;
+        kamehamehaUpgradeButton.textContent = "Kamehameha (boosting: " + kamehamehaBoostLeft + "s)";
+    } else if (kamehamehaCooldownLeft > 0) {
+        kamehamehaUpgradeButton.disabled = true;
+        kamehamehaUpgradeButton.textContent = "Kamehameha ready in " + kamehamehaCooldownLeft + "s";
+    } else if (kamehamehaPower === 0) {
+        kamehamehaUpgradeButton.disabled = true;
+        kamehamehaUpgradeButton.textContent = "Kamehameha locked";
+    } else if (ki < kamehamehaCost) {
+        kamehamehaUpgradeButton.disabled = true;
         kamehamehaUpgradeButton.textContent = "Kamehameha for " + kamehamehaCost + " ki";
     } else {
-        alert("Not enough Ki");
+        kamehamehaUpgradeButton.disabled = false;
+        kamehamehaUpgradeButton.textContent = "Kamehameha for " + kamehamehaCost + " ki";
     }
 }
 
@@ -73,4 +180,6 @@ upgradeClickerButton.addEventListener("click", buyMultiplier);
 autoClickerButton.addEventListener("click", buyAutoClicker);
 kamehamehaUpgradeButton.addEventListener("click", buyKamehameha);
 
+// run once at the end, after everything is defined
 updateCookieAmount();
+
