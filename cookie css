@@ -245,25 +245,25 @@ select {
   margin: 1.5rem auto;
 }
 
-#gohanImage {
+#gohan {
   width: 180px;
   height: auto;
   image-rendering: pixelated;
-  filter: drop-shadow(0 0 25px rgba(245, 197, 24, 0.35));
-  animation: gohan-breathe 2.4s ease-in-out infinite;
+  animation: gohan-breathe 2.4s ease-in-out infinite,
+    gohan-aura 2.4s ease-in-out infinite;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 0 12px rgba(245, 197, 24, 0.55));
+  will-change: transform, filter;
 }
 
 @keyframes gohan-breathe {
   0%,
   100% {
     transform: scale(1) translateY(0);
-    filter: drop-shadow(0 0 20px rgba(245, 197, 24, 0.3));
   }
 
   50% {
-    transform: scale(1.04) translateY(-4px);
-    filter: drop-shadow(0 0 35px rgba(245, 197, 24, 0.6))
-      drop-shadow(0 0 14px rgba(255, 255, 255, 0.25));
+    transform: scale(1.035) translateY(-4px);
   }
 }
 
@@ -272,7 +272,7 @@ select {
 #cookieAmount,
 #info,
 .container,
-#KamehamehaUpgrade {
+#techniqueButton {
   display: block;
   margin-right: auto;
   margin-left: auto;
@@ -350,13 +350,14 @@ select {
   margin: 12px 0;
 }
 
-#KamehamehaUpgrade {
+#techniqueButton {
+  width: min(100% - 24px, 480px);
   margin-top: 24px;
   background: linear-gradient(90deg, #3b82f6, #8b5cf6);
   box-shadow: 0 0 18px rgb(59 130 246 / 45%);
 }
 
-#KamehamehaUpgrade:disabled:hover {
+#techniqueButton:disabled:hover {
     background: linear-gradient(90deg, #3b82f6, #8b5cf6);
 }
 
@@ -441,32 +442,6 @@ button:disabled:hover {
   }
 }
 
-/* Breathing animation for the Gohan image (still PNG frame, so we fake the motion with CSS) */
-.gohan-stage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#gohanImage {
-  /* subtle "breathing" scale/translate loop, gold aura pulse underneath */
-  animation: gohan-breathe 2.4s ease-in-out infinite,
-    gohan-aura 2.4s ease-in-out infinite;
-  transform-origin: center bottom;
-  filter: drop-shadow(0 0 12px rgba(245, 197, 24, 0.55));
-  will-change: transform, filter;
-}
-
-@keyframes gohan-breathe {
-  0%,
-  100% {
-    transform: scale(1) translateY(0);
-  }
-  50% {
-    transform: scale(1.035) translateY(-4px);
-  }
-}
-
 @keyframes gohan-aura {
   0%,
   100% {
@@ -508,4 +483,3 @@ button:disabled:hover {
 @keyframes gohan-hit{50%{transform:scale(1.06,.94)}}
 
 @media (prefers-reduced-motion:reduce){.gohan{animation:none}}
-
