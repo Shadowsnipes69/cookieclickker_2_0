@@ -1,0 +1,324 @@
+class GohanClickerGame {
+  constructor() {
+    // Haal alle knoppen en teksten uit de HTML op, zodat we ze later kunnen aanpassen
+    this.cookieButton = document.getElementById("cookieButton");
+    this.cookieAmount = document.getElementById("cookieAmount");
+    this.upgradeClickerButton = document.getElementById("upgradeClicker");
+    this.autoClickerButton = document.getElementById("autoClicker");
+    this.kamehamehaStatusEl = document.getElementById("kamehamehaStatus");
+    this.techniqueButton = document.getElementById("techniqueButton");
+
+    // Creator mode staat aan als je het spel lokaal opent (file:// of localhost): dan is er geen cooldown
+    this.creatorMode =
+      window.location.protocol === "file:" ||
+      ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+
+    this.ki = 0; // hoeveel ki je nu hebt
+    this.multiplier = 1; // hoeveel ki je per klik krijgt (de "Upgrade clicker")
+    this.multiplierCost = 50;
+
+    this.autoClickers = 0; // hoeveel auto clickers je hebt
+    this.autoClickerCost = 100;
+
+    // De extra upgrades uit de shop. Elke keer kopen maakt je ki-winst "factor" keer groter.
+    // factor = hoeveel keer meer ki, max = hoe vaak je hem mag kopen,
+    // baseCost = startprijs, costGrowth = hoeveel duurder hij elke keer wordt
+    this.boostData = [
+      { id: "instantTransmission", name: "Instant Transmission", factor: 3, max: 9, baseCost: 1000, costGrowth: 1.6 },
+      { id: "impulseFist", name: "Impulse Fist", factor: 1.2, max: 5, baseCost: 300, costGrowth: 1.5 },
+      { id: "cleanKick", name: "Clean Kick", factor: 1.2, max: 5, baseCost: 600, costGrowth: 1.5 },
+    ].map((boost) => ({
+      // .map maakt van elke upgrade hierboven een nieuwe, met extra gegevens erbij.
+      // "...boost" kopieert alles wat er al in stond.
+      ...boost,
+      level: 0, // hoe vaak je hem al gekocht hebt
+      cost: boost.baseCost, // huidige prijs
+      button: document.getElementById(boost.id), // de knop in de HTML
+      info: document.getElementById(`${boost.id}Info`), // het "max 9x" tekstje onder de knop
+    }));
+
+    this.nextImageSrc = "";
+    this.autoClickerInterval = null;
+
+    // De technieken. requiredKi = hoeveel ki je minimaal nodig hebt, cooldown = wachttijd in seconden
+    this.techniqueData = [
+      { name: "Kamehameha", requiredKi: 150, cooldown: 60 },
+      { name: "Masenko", requiredKi: 750, cooldown: 60 },
+      { name: "Masendan", requiredKi: 2250, cooldown: 60 },
+      { name: "Hidden Potential", requiredKi: 6750, cooldown: 60 },
+      { name: "Ultimate Kamehameha", requiredKi: 10000, cooldown: 60 },
+      { name: "Ultimate Explosive Kamehameha", requiredKi: 20000, cooldown: 180 },
+      { name: "Super Saiyan", requiredKi: 25000, cooldown: 180 },
+      { name: "Super Saiyan 2", requiredKi: 30000, cooldown: 180 },
+      { name: "Father-Son Kamehameha", requiredKi: 35000, cooldown: 180 },
+      { name: "Twin Dragon Shot", requiredKi: 40000, cooldown: 180 },
+      { name: "Electric Kamehameha", requiredKi: 50000, cooldown: 300 },
+      { name: "Grown Up", requiredKi: 75000, cooldown: 300 },
+      { name: "Beast Gohan", requiredKi: 150000, cooldown: 300 },
+      { name: "Special Beam Cannon", requiredKi: 200000, cooldown: 300 },
+      { name: "Makankosappo", requiredKi: 250000, cooldown: 300 },
+    ].map((technique, index) => ({
+      // Ook hier voegt .map extra gegevens toe aan elke techniek.
+      // index is het nummer van de techniek: Kamehameha = 0, Masenko = 1, enzovoort.
+      ...technique,
+      // Kamehameha = 5x, Masenko = 6x, en elke volgende techniek is 1x hoger
+      boost: 5 + index,
+      boostSeconds: 10, // hoe lang de boost duurt
+    }));
+
+    // De boost die nu actief is (1 = geen boost)
+    this.techBoostFactor = 1;
+    this.techBoostLeft = 0; // seconden die de boost nog duurt
+    this.techBoostName = "";
+
+    this.currentTechniqueIndex = 0; // welke techniek als volgende aan de beurt is
+    this.cooldownLeft = 0; // seconden cooldown die nog over zijn
+    this.cooldownTechniqueName = "";
+    this.techniqueTimer = null;
+
+    this.gohanStages = [
+      { src: "base.gif", label: "Base Gohan" },
+      { src: "ssj1.gif", label: "Super Saiyan Gohan" },
+      { src: "ssj2.gif", label: "Super Saiyan 2 Gohan" },
+      { src: "ultimate.gif", label: "Adult Gohan" },
+      { src: "beast.gif", label: "Beast Gohan" },
+    ];
+
+    this.bindEvents();
+    this.updateCookieAmount();
+  }
+
+  // Zegt welke functie bij welke knop hoort
+  bindEvents() {
+    this.cookieButton.addEventListener("click", () => this.clickKi());
+    this.upgradeClickerButton.addEventListener("click", () => this.buyMultiplier());
+    this.autoClickerButton.addEventListener("click", () => this.buyAutoClicker());
+    this.techniqueButton.addEventListener("click", () => this.activateNextTechnique());
+    // Hetzelfde voor de drie extra upgrades; "if (boost.button)" voorkomt een fout als een knop mist
+    this.boostData.forEach((boost) => {
+      if (boost.button) boost.button.addEventListener("click", () => this.buyBoost(boost));
+    });
+  }
+
+  // Rekent uit hoeveel keer meer ki je nu krijgt: alle upgrades en de techniek-boost maal elkaar.
+  // reduce loopt door de lijst en vermenigvuldigt steeds verder, beginnend bij de techniek-boost.
+  // Math.pow(3, 2) betekent 3 x 3: zo telt elke keer kopen mee.
+  get kiMultiplier() {
+    return this.boostData.reduce(
+      (total, boost) => total * Math.pow(boost.factor, boost.level),
+      this.techBoostFactor
+    );
+  }
+
+  // Telt ki erbij, inclusief alle boosts.
+  // De afronding op 4 decimalen voorkomt rare getallen zoals 1.2000000000000002
+  addKi(amount) {
+    this.ki = Math.round((this.ki + amount * this.kiMultiplier) * 10000) / 10000;
+  }
+
+  // Zet 20000 om naar "20,000" zodat grote getallen leesbaar zijn
+  formatNumber(value) {
+    return new Intl.NumberFormat("en-US").format(value);
+  }
+
+  // Kiest welk Gohan-plaatje past bij hoeveel technieken je hebt.
+  // Per 3 technieken komt er een nieuw plaatje; Math.min zorgt dat het nooit voorbij het laatste plaatje gaat.
+  updateGohanImage(stageIndex) {
+    const imageStageIndex = Math.min(
+      this.gohanStages.length - 1,
+      Math.floor(stageIndex / 3)
+    );
+    const current = this.gohanStages[imageStageIndex];
+    const img = document.getElementById("gohan");
+
+    // Stop als het plaatje al goed staat, dan hoeft er niets te veranderen
+    if (!img || this.nextImageSrc === current.src) return;
+
+    this.nextImageSrc = current.src;
+    img.src = current.src;
+    img.alt = current.label;
+  }
+
+  // Past de tekst en aan/uit-status van de techniek-knop aan
+  updateTechniqueButton() {
+    const nextTechnique = this.techniqueData[this.currentTechniqueIndex];
+
+    // Geen volgende techniek meer = alles is vrijgespeeld
+    if (!nextTechnique) {
+      this.techniqueButton.textContent = this.cooldownLeft > 0
+        ? `${this.cooldownTechniqueName} cooldown: ${this.cooldownLeft}s`
+        : "All techniques unlocked!";
+      this.techniqueButton.disabled = true;
+      return;
+    }
+
+    // Tijdens de cooldown: knop uit en laten zien hoe lang het nog duurt
+    if (this.cooldownLeft > 0) {
+      this.techniqueButton.textContent =
+        `${nextTechnique.name} (${nextTechnique.boost}x ki for ${nextTechnique.boostSeconds}s) available in ${this.cooldownLeft}s`;
+      this.techniqueButton.disabled = true;
+      return;
+    }
+
+    // Anders: laat naam, benodigde ki en boost zien. De knop is uit zolang je te weinig ki hebt.
+    this.techniqueButton.textContent =
+      `${nextTechnique.name} · ${this.formatNumber(nextTechnique.requiredKi)} KI · ${nextTechnique.boost}x ki for ${nextTechnique.boostSeconds}s`;
+    this.techniqueButton.disabled = this.ki < nextTechnique.requiredKi;
+  }
+
+  // Past één van de drie extra upgrades in de shop aan (tekst, prijs, aan/uit)
+  updateBoostButton(boost) {
+    if (!boost.button) return;
+
+    // maxed = je hebt hem al zo vaak gekocht als mag
+    const maxed = boost.level >= boost.max;
+    boost.button.disabled = maxed || this.ki < boost.cost;
+    boost.button.textContent = maxed
+      ? `${boost.name} (MAX)`
+      : `${boost.name} (${boost.factor}x ki) for ${boost.cost} ki`;
+
+    // Het tekstje onder de knop, bijvoorbeeld "max 9x · 3/9"
+    if (boost.info) {
+      boost.info.textContent = `max ${boost.max}x · ${boost.level}/${boost.max}`;
+    }
+  }
+
+  // Zet alle knoppen uit die je nog niet kunt betalen
+  updateShopButtons() {
+    this.upgradeClickerButton.disabled = this.ki < this.multiplierCost;
+    this.autoClickerButton.disabled = this.ki < this.autoClickerCost;
+    this.boostData.forEach((boost) => this.updateBoostButton(boost));
+    this.updateTechniqueButton();
+  }
+
+  // Ververst alles wat je ziet. Dit wordt na bijna elke actie aangeroepen.
+  // Math.floor rondt naar beneden af, dus 6.8 ki laat zich zien als 6.
+  updateCookieAmount() {
+    this.cookieAmount.textContent = `You have ${Math.floor(this.ki)} ki!`;
+    this.updateGohanImage(this.currentTechniqueIndex);
+    this.updateShopButtons();
+  }
+
+  clickKi() {
+    this.addKi(this.multiplier);
+    this.updateCookieAmount();
+  }
+
+  // Koopt een van de extra upgrades
+  buyBoost(boost) {
+    // Al op het maximum? Dan doet klikken niets meer
+    if (boost.level >= boost.max) return;
+
+    if (this.ki < boost.cost) {
+      alert("Not enough Ki");
+      return;
+    }
+
+    this.ki = Math.round((this.ki - boost.cost) * 10000) / 10000;
+    boost.level += 1;
+    // Math.ceil rondt naar boven af, zodat de prijs een heel getal blijft
+    boost.cost = Math.ceil(boost.cost * boost.costGrowth);
+    this.updateCookieAmount();
+  }
+
+  buyMultiplier() {
+    if (this.ki < this.multiplierCost) {
+      alert("Not enough Ki");
+      return;
+    }
+
+    this.ki -= this.multiplierCost;
+    this.multiplierCost = Math.ceil(this.multiplierCost * 1.3);
+    this.multiplier += 1;
+    this.updateCookieAmount();
+    this.upgradeClickerButton.textContent = `Upgrade clicker for ${this.multiplierCost} ki`;
+  }
+
+  buyAutoClicker() {
+    if (this.ki < this.autoClickerCost) {
+      alert("Not enough Ki");
+      return;
+    }
+
+    this.ki -= this.autoClickerCost;
+    this.autoClickers += 1;
+    this.autoClickerCost = Math.ceil(this.autoClickerCost * 1.25);
+    this.updateCookieAmount();
+    this.autoClickerButton.textContent = `Purchase auto clicker for ${this.autoClickerCost} ki`;
+
+    // Start de automatische ki maar één keer. setInterval herhaalt de code elke 1000 ms (= 1 seconde).
+    if (this.autoClickerInterval === null) {
+      this.autoClickerInterval = setInterval(() => {
+        this.addKi(this.autoClickers);
+        this.updateCookieAmount();
+      }, 1000);
+    }
+  }
+
+  // Zet de tekst in de gekleurde balk bovenaan: de boost en/of de cooldown
+  updateStatus() {
+    const parts = [];
+
+    if (this.techBoostLeft > 0) {
+      parts.push(`${this.techBoostName}: ${this.techBoostFactor}x ki boost, ${this.techBoostLeft}s left`);
+    }
+
+    if (this.cooldownLeft > 0) {
+      parts.push(`Cooldown: ${this.cooldownLeft}s`);
+    }
+
+    // join plakt de stukjes aan elkaar met een streepje ertussen; bij een lege lijst blijft de balk leeg
+    this.kamehamehaStatusEl.textContent = parts.join(" · ");
+  }
+
+  // De klok die elke seconde de boost en de cooldown met 1 verlaagt
+  startTechniqueTimer() {
+    // Staat de klok al aan? Dan niet nog een tweede starten
+    if (this.techniqueTimer !== null) return;
+
+    this.techniqueTimer = setInterval(() => {
+      // Math.max(0, ...) zorgt dat de tijd nooit onder 0 komt
+      this.cooldownLeft = Math.max(0, this.cooldownLeft - 1);
+      this.techBoostLeft = Math.max(0, this.techBoostLeft - 1);
+
+      // Boost voorbij: terug naar normaal (1x)
+      if (this.techBoostLeft === 0) {
+        this.techBoostFactor = 1;
+      }
+
+      this.updateStatus();
+      this.updateCookieAmount();
+
+      // Is zowel de boost als de cooldown klaar? Dan kan de klok stoppen
+      if (this.cooldownLeft === 0 && this.techBoostLeft === 0) {
+        clearInterval(this.techniqueTimer);
+        this.techniqueTimer = null;
+      }
+    }, 1000);
+  }
+
+  // Wordt uitgevoerd als je op de techniek-knop klikt
+  activateNextTechnique() {
+    const technique = this.techniqueData[this.currentTechniqueIndex];
+    // Stop als er geen techniek meer is, je te weinig ki hebt of de cooldown nog loopt
+    if (!technique || this.ki < technique.requiredKi || this.cooldownLeft > 0) return;
+
+    this.currentTechniqueIndex += 1;
+    this.cooldownTechniqueName = technique.name;
+
+    // Een nieuwe techniek vervangt de boost van de vorige
+    this.techBoostFactor = technique.boost;
+    this.techBoostLeft = technique.boostSeconds;
+    this.techBoostName = technique.name;
+
+    // In creator mode (file:// of localhost) is er geen cooldown.
+    // "a ? b : c" betekent: als a waar is neem b, anders c.
+    this.cooldownLeft = this.creatorMode ? 0 : technique.cooldown;
+
+    this.updateStatus();
+    this.startTechniqueTimer();
+    this.updateCookieAmount();
+  }
+}
+
+new GohanClickerGame();
