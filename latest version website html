@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gohan clicker game</title>
+    <link rel="stylesheet" href="theme.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+    <div id="kamehamehaStatus"></div>
+    <button id="cookieButton" class="ki-btn">
+        <span class="ki-symbol">気</span>
+        <span class="ki-label">KI</span>
+    </button>
+    <div id="points"><strong>Point(S):</strong><span id="point">0</span></div>
+
+    <h2 id="cookieAmount">You have 0 ki!</h2>
+    <p id="info">Become the strongest!</p>
+    
+    <main class="container">
+    <div class="gohan-stage">
+        <img id="gohan" src="base.gif" alt="Gohan" style="image-rendering: pixelated">
+    </div>
+    <div class="shop">
+        <h2>shop:</h2>
+        <p id="amount">Even stronger now</p>
+        <button type="button" id="upgradeClicker">Upgrade clicker for 50 ki</button>
+        <button type="button" id="autoClicker">Purchase auto clicker for 100 Ki</button>
+
+        <div class="upgrade">
+            <button type="button" class="buy" id="instantTransmission">Instant Transmission (3x ki) for 1000 ki</button>
+            <small class="upgrade-info" id="instantTransmissionInfo">max 9x</small>
+        </div>
+        <div class="upgrade">
+            <button type="button" class="buy" id="impulseFist">Impulse Fist (1.2x ki) for 300 ki</button>
+            <small class="upgrade-info" id="impulseFistInfo">max 5x</small>
+        </div>
+        <div class="upgrade">
+            <button type="button" class="buy" id="cleanKick">Clean Kick (1.2x ki) for 600 ki</button>
+            <small class="upgrade-info" id="cleanKickInfo">max 5x</small>
+        </div>
+    </div>
+    </main>
+
+    <button type="button" id="techniqueButton"></button>
+
+</body>
+</html>
